@@ -2,7 +2,23 @@
 基于Selenium爬取天眼查数据
 
 
+### 运行须知
+
 下载后解压，运行py文件即可
+
+注意事项:
+
+  该行为服务器配置需要：
+
+  self.browser = webdriver.Chrome(options=option, executable_path='/root/chromedriver')
+
+  本地使用需注释此行并取消注释：
+
+  self.browser = webdriver.Chrome(chrome_options=option)
+  
+  将该行注释可以在运行时弹出chrome浏览器进行监控，服务器运行必须取消注释
+
+  option.add_argument("headless")
 
 ### 网址匹配：
 

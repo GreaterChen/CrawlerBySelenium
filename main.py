@@ -11,7 +11,7 @@ from tqdm import tqdm
 class crawler:
     def __init__(self):
         self.all_companys = pd.read_excel('dataset/data.xlsx')
-        self.key_words = self.all_companys['企业名称'].to_list()[100:120]  # 在这
+        self.key_words = self.all_companys['企业名称'].to_list()[50:60]  # 在这更改处理企业范围
         # self.key_words = ['万源市金桥建材有限责任公司']
         # key_words = ['七台河矿业精煤集团有限公司']
         self.exist = []  # 能否匹配到网址
@@ -25,8 +25,13 @@ class crawler:
         self.unable_5 = []  # 未知原因未被获取
 
         option = webdriver.ChromeOptions()
-        # option.add_argument("headless")   # 取消注释可以不显示弹出的chrome浏览器
-        self.browser = webdriver.Chrome(chrome_options=option)
+        option.add_argument("headless")  # 取消注释可以不显示弹出的chrome浏览器
+        option.add_argument('no-sandbox')
+        option.add_argument(
+            "user-agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36'")
+        # 本地运行用第一行，linux服务器运行用第二行
+        # self.browser = webdriver.Chrome(chrome_options=option)
+        self.browser = webdriver.Chrome(options=option, executable_path='/root/chromedriver')
 
     def GetURL(self):
         for key_word in tqdm(self.key_words, desc="获取网址", file=sys.stdout):
@@ -37,7 +42,7 @@ class crawler:
             company = self.browser.find_element_by_xpath("//*[@class='index_name__qEdWi']/a")
             LogOut = company.find_element_by_xpath("../../div[2]")
             if LogOut.text == "注销":
-                print(key_word, "已被注销")
+                print("已注销:", key_word)
                 self.exist.append(0)
                 self.unable_3.append(key_word)
                 continue
@@ -60,7 +65,7 @@ class crawler:
 
                     LogOut = company.find_element_by_xpath("../../div[2]")
                     if LogOut.text == "注销":
-                        print(key_word, "已被注销")
+                        print("已注销:", key_word)
                         self.exist.append(0)
                         self.unable_3.append(key_word)
                         continue
@@ -89,6 +94,8 @@ class crawler:
             f.close()
 
     def GetHolderInfo(self, hrefs, sign):
+        self.unable_4.clear()
+        self.unable_5.clear()
         if sign == 0:
             if os.path.isfile("res/unable_2.txt"):  # 如果有unable_2.txt就删掉
                 os.remove("res/unable_2.txt")
@@ -105,9 +112,8 @@ class crawler:
                 self.browser.find_element_by_xpath(
                     '//div[@class="index_tag-nav-root__DyEBq"]/a[contains(text(),"股东信息")]')
             except:  # 如果在索引栏没有找到说明无股东信息
-                print(href['company_name'], "无股东信息")
+                print("无股东信息:", href['company_name'])
                 self.unable_2.append(href['company_name'])
-
                 continue
 
             # 在正文获取股东模块
@@ -125,12 +131,12 @@ class crawler:
                     gudongs.append(data[1].find_element_by_xpath("./div/div[2]/div/div/a").text)
                     chigubilis.append(data[2].text)
             except:
-                print(href['company_name'], "超时未被获取")
+                print("超时未获取:", href['company_name'])
                 self.unable_4.append(href)
                 continue
 
-            if len(gudongs) == 0 or len(chigubilis) == 0:
-                print(href['company_name'],"未知原因缺失")
+            if len(gudongs) == 0 or len(chigubilis) == 0 or gudongs[0] == '' or chigubilis[0] == '':
+                print("未知原因缺失:", href['company_name'])
                 self.unable_5.append(href)
                 continue
             else:
@@ -173,6 +179,9 @@ class crawler:
             f.close()
         self.GetHolderInfo(deal, 1)
 
+        if len(self.unable_4):
+            self.DealTimeOut()
+
     def DealUnKnown(self):
         print("\n处理未知原因空缺")
         deal = []
@@ -183,6 +192,9 @@ class crawler:
                     deal.append(eval(item))
             f.close()
         self.GetHolderInfo(deal, 1)
+
+        if len(self.unable_5):
+            self.DealUnKnown()
 
 
 if __name__ == '__main__':
