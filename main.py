@@ -12,8 +12,8 @@ from tqdm import tqdm
 class crawler:
     def __init__(self):
         self.all_companys = pd.read_excel('dataset/data.xlsx')
-        self.key_words = self.all_companys['企业名称'].to_list()[70:100]  # 在这更改处理企业范围
-        # self.key_words = ['一汽山东汽车改装厂']
+        self.key_words = self.all_companys['企业名称'].to_list()[:105]  # 在这更改处理企业范围
+        # self.key_words = ['万源市康星饮料矿泉水有限公司']
         self.exist = []  # 能否匹配到网址
         self.num = 0
         self.DealTimeOut_max_times = 0
@@ -43,52 +43,131 @@ class crawler:
             self.browser.add_cookie(cookie)
 
     def GetURL(self):
+        cnt = 0
+        save_info = pd.DataFrame()
+        names = []
+        urls = []
+        status = []  # 0:正常，1:经营状况异常，
         for key_word in tqdm(self.key_words, desc="获取网址", file=sys.stdout):
+            names.append(key_word)
             url = 'https://www.tianyancha.com/search?key={}'.format(quote(key_word))
             self.browser.get(url)
             self.browser.implicitly_wait(1)
-
-            company = self.browser.find_element_by_xpath("//*[@class='index_name__qEdWi']/a")
-            LogOut = company.find_element_by_xpath("../../div[2]").get_attribute('class')
-            if 'normal' not in LogOut:
-                print("经营状况异常:", key_word)
-                self.exist.append(0)
-                self.unable_3.append(key_word)
-                continue
-
-            if company.text == key_word or company.text == key_word[:-2] + '责任公司' or key_word in company.text:
-                href = company.get_attribute('href')
-                self.hrefs.append({"company_name": key_word, "url": href})
-                self.exist.append(1)
-            else:
-                try:
-                    temp = self.browser.find_element_by_xpath("//*[contains(text(),'历史名称')]")
-                    previous_url = temp.find_element_by_xpath("../../../div[1]/div[1]/a").get_attribute('href')
-                    self.hrefs.append({"company_name": key_word, "url": previous_url})
-                    self.exist.append(1)
-                except:
-                    url = 'https://www.tianyancha.com/search?key={}'.format(quote(key_word[:-2] + '责任公司'))
-                    self.browser.get(url)
-                    WebDriverWait(self.browser, 10)  # 等网站加载好，最多等10s
-                    company = self.browser.find_element_by_xpath("//*[@class='index_name__qEdWi']/a")
-
-                    LogOut = company.find_element_by_xpath("../../div[2]")
-                    if LogOut.text == "注销":
-                        print("已注销:", key_word)
+            company = self.browser.find_element_by_xpath("//*[@class='index_name__qEdWi']/a")  # 获取搜索结果的第一家企业
+            if company.text == key_word or company.text == key_word[:-2] + '责任公司' or key_word in company.text \
+                    or company.text == key_word.replace('（', '').replace('）', '') \
+                    or company.text == (key_word[:-2] + '责任公司').replace('（', '').replace('）', ''):
+                try:  # 尝试能否获取到企业经营状态(有毫无信息的企业)
+                    LogOut = company.find_element_by_xpath("../../div[2]").get_attribute('class')
+                    if 'normal' not in LogOut:  # 判断经营状况是否正常
+                        print("经营状况异常:", key_word)
                         self.exist.append(0)
                         self.unable_3.append(key_word)
+                        urls.append('-')
+                        status.append(1)
                         continue
+                    href = company.get_attribute('href')
+                    self.hrefs.append({"company_name": key_word, "url": href})
+                    self.exist.append(1)
+                    urls.append(href)
+                    status.append(0)
+                    continue
+                except:
+                    pass
 
-                    if company.text == key_word or company.text == key_word[:-2] + '责任公司':
+            try:  # 尝试能否找到历史名称匹配的企业
+                temp = self.browser.find_element_by_xpath("//*[contains(text(),'历史名称')]")
+                previous_name = temp.find_element_by_xpath("../span[2]").text
+                if previous_name == key_word or previous_name == key_word[:-2] + '责任公司' or key_word in previous_name\
+                        or key_word[:-2] + '责任公司' in previous_name\
+                        or previous_name == key_word.replace('（', '').replace('）', '') \
+                        or previous_name == (key_word[:-2] + '责任公司').replace('（', '').replace('）', ''):
+                    company = temp.find_element_by_xpath("../../../div[1]/div[1]/a")
+                    try:
+                        LogOut = company.find_element_by_xpath("../../div[2]").get_attribute('class')
+                        if 'normal' not in LogOut:  # 判断经营状况是否正常
+                            print("经营状况异常:", key_word)
+                            self.exist.append(0)
+                            self.unable_3.append(key_word)
+                            status.append(1)
+                            urls.append('-')
+                            continue
                         href = company.get_attribute('href')
                         self.hrefs.append({"company_name": key_word, "url": href})
                         self.exist.append(1)
-                    else:
-                        print("未找到:", key_word)
-                        self.unable_1.append(key_word)
-                        self.exist.append(0)
+                        status.append(0)
+                        urls.append(href)
+                        continue
+                    except:
+                        pass
+            except:
+                key_word = key_word[:-2] + '责任公司'
+                url = 'https://www.tianyancha.com/search?key={}'.format(quote(key_word))
+                self.browser.get(url)
+                WebDriverWait(self.browser, 10)  # 等网站加载好，最多等10s
+                company = self.browser.find_element_by_xpath("//*[@class='index_name__qEdWi']/a")
+                if company.text == key_word or key_word in company.text \
+                        or company.text == key_word.replace('（', '').replace('）', ''):
+                    try:
+                        LogOut = company.find_element_by_xpath("../../div[2]").get_attribute('class')
+                        if 'normal' not in LogOut:  # 判断经营状况是否正常
+                            print("经营状况异常:", key_word)
+                            self.exist.append(0)
+                            self.unable_3.append(key_word)
+                            status.append(1)
+                            urls.append('-')
+                            continue
+                        href = company.get_attribute('href')
+                        self.hrefs.append({"company_name": key_word, "url": href})
+                        self.exist.append(1)
+                        status.append(0)
+                        urls.append(href)
+                        continue
+                    except:
+                        pass
+                try:  # 尝试能否找到历史名称匹配的企业
+                    temp = self.browser.find_element_by_xpath("//*[contains(text(),'历史名称')]")
+
+                    previous_name = temp.find_element_by_xpath("../span[2]").text
+                    if previous_name == key_word or key_word in previous_name\
+                            or previous_name == key_word.replace('（', '').replace('）', ''):
+                        company = temp.find_element_by_xpath("../../../div[1]/div[1]/a")
+                        try:
+                            LogOut = company.find_element_by_xpath("../../div[2]").get_attribute('class')
+                            if 'normal' not in LogOut:  # 判断经营状况是否正常
+                                print("经营状况异常:", key_word)
+                                self.exist.append(0)
+                                self.unable_3.append(key_word)
+                                status.append(1)
+                                urls.append('-')
+                                continue
+                            href = company.get_attribute('href')
+                            self.hrefs.append({"company_name": key_word, "url": href})
+                            self.exist.append(1)
+                            status.append(1)
+                            urls.append(href)
+                            continue
+                        except:
+                            pass
+                except:
+                    pass
+            status.append(2)
+            urls.append('-')
+            print('未找到:', key_word)
+            cnt += 1
+            if cnt % 100 == 0:
+                save_info['企业名称'] = names
+                save_info['状态'] = status
+                save_info['网址'] = urls
+                save_info.to_csv('res/url_info.csv')
+
         print(f"共匹配到:{sum(self.exist)}个")
         # 这个exist数组后面可以写入data.xlsx的一列，用以表示存不存在
+
+        save_info['企业名称'] = names
+        save_info['状态'] = status
+        save_info['网址'] = urls
+        save_info.to_csv('res/url_info.csv')
 
         with open("res/unable_1.txt", "w") as f:
             for item in self.unable_1:
@@ -141,7 +220,8 @@ class crawler:
                             f"//div[@data-dim='holder']/div[2]/div/div[@class='table-footer']/div/div/div/div[{current_page + 1}]")
                         self.browser.execute_script("arguments[0].click();", temp)
                     sleep(1)
-                    self.GuDong = self.browser.find_elements_by_xpath("//div[@data-dim='holder']/div[2]/div/table/tbody/tr")
+                    self.GuDong = self.browser.find_elements_by_xpath(
+                        "//div[@data-dim='holder']/div[2]/div/table/tbody/tr")
                     WebDriverWait(self.browser, 10)
                     for item in self.GuDong:
                         WebDriverWait(self.browser, 10)
@@ -223,6 +303,6 @@ class crawler:
 if __name__ == '__main__':
     c = crawler()
     c.GetURL()
-    c.GetHolderInfo(c.hrefs, 0)
-    c.DealTimeOut()
-    c.DealUnKnown()
+    # c.GetHolderInfo(c.hrefs, 0)
+    # c.DealTimeOut()
+    # c.DealUnKnown()
