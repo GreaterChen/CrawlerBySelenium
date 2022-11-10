@@ -1,3 +1,0 @@
-{'company_name': 'TOWA半导体设备（苏州）有限公司', 'url': 'https://www.tianyancha.com/company/2350737592'}
-{'company_name': '一汽杰克赛尔空调有限公司', 'url': 'https://www.tianyancha.com/company/863729464'}
-{'company_name': '万新塑胶制品（天津）有限公司', 'url': 'https://www.tianyancha.com/company/489580887'}
