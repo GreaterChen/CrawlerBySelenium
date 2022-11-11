@@ -11,16 +11,16 @@ from tqdm import tqdm
 
 class crawler:
     def __init__(self):
-        self.all_companys = pd.read_excel('dataset/data.xlsx')
-        self.key_words = self.all_companys['企业名称'].to_list()[:105]  # 在这更改处理企业范围
-        # self.key_words = ['万源市康星饮料矿泉水有限公司']
+        # self.all_companys = pd.read_excel('dataset/data.xlsx')
+        # self.key_words = self.all_companys['企业名称'].to_list()[0:100]  # 在这更改处理企业范围
+        self.key_words = ['小米科技有限责任公司']
         self.exist = []  # 能否匹配到网址
         self.num = 0
         self.DealTimeOut_max_times = 0
         self.DealUnKnown_max_times = 0
         self.hrefs = []  # 匹配到的企业名称和网址(字典格式存储)
         self.unable_1 = []  # 查找不到网址
-        self.unable_2 = []  # 无股东信息
+        self.unable_2 = []  # 无信息
         self.unable_3 = []  # 已注销
         self.unable_4 = []  # 超时未被获取
         self.unable_5 = []  # 未知原因未被获取
@@ -79,8 +79,8 @@ class crawler:
             try:  # 尝试能否找到历史名称匹配的企业
                 temp = self.browser.find_element_by_xpath("//*[contains(text(),'历史名称')]")
                 previous_name = temp.find_element_by_xpath("../span[2]").text
-                if previous_name == key_word or previous_name == key_word[:-2] + '责任公司' or key_word in previous_name\
-                        or key_word[:-2] + '责任公司' in previous_name\
+                if previous_name == key_word or previous_name == key_word[:-2] + '责任公司' or key_word in previous_name \
+                        or key_word[:-2] + '责任公司' in previous_name \
                         or previous_name == key_word.replace('（', '').replace('）', '') \
                         or previous_name == (key_word[:-2] + '责任公司').replace('（', '').replace('）', ''):
                     company = temp.find_element_by_xpath("../../../div[1]/div[1]/a")
@@ -130,7 +130,7 @@ class crawler:
                     temp = self.browser.find_element_by_xpath("//*[contains(text(),'历史名称')]")
 
                     previous_name = temp.find_element_by_xpath("../span[2]").text
-                    if previous_name == key_word or key_word in previous_name\
+                    if previous_name == key_word or key_word in previous_name \
                             or previous_name == key_word.replace('（', '').replace('）', ''):
                         company = temp.find_element_by_xpath("../../../div[1]/div[1]/a")
                         try:
@@ -168,7 +168,10 @@ class crawler:
         save_info['企业名称'] = names
         save_info['状态'] = status
         save_info['网址'] = urls
-        save_info.to_csv('res/url_info.csv')
+        if os.path.isfile("res/url_info_total.csv"):
+            save_info.to_csv('res/url_info_total.csv', mode='a', header=False, index=False)
+        else:
+            save_info.to_csv('res/url_info_total.csv', mode='a', index=False)
 
         with open("res/unable_1.txt", "w") as f:
             for item in self.unable_1:
@@ -200,8 +203,13 @@ class crawler:
             try:
                 gudong_title = self.browser.find_element_by_xpath(
                     '//div[@class="index_tag-nav-root__DyEBq"]/a[contains(text(),"股东信息")]')
+                if gudong_title.text[:4] != '股东信息':
+                    print("无股东信息:", href['company_name'])
+                    self.unable_2.append(href['company_name'])
+                    continue
+
                 total_len = int(gudong_title.find_element_by_xpath("./span").text)
-                pass
+
             except:  # 如果在索引栏没有找到说明无股东信息
                 print("无股东信息:", href['company_name'])
                 self.unable_2.append(href['company_name'])
@@ -216,9 +224,13 @@ class crawler:
             current_page = 0
             try:
                 while page != current_page:
-                    if current_page != 0:
+                    if current_page == 1:
                         temp = self.browser.find_element_by_xpath(
-                            f"//div[@data-dim='holder']/div[2]/div/div[@class='table-footer']/div/div/div/div[{current_page + 1}]")
+                            f"//div[@data-dim='holder']/div[2]/div/div[@class='table-footer']/div/div/div/div[{page + 1}]")
+                        self.browser.execute_script("arguments[0].click();", temp)
+                    elif current_page > 1:
+                        temp = self.browser.find_element_by_xpath(
+                            f"//div[@data-dim='holder']/div[2]/div/div[@class='table-footer']/div/div/div/div[{page + 2}]")
                         self.browser.execute_script("arguments[0].click();", temp)
                     sleep(1)
                     self.GuDong = self.browser.find_elements_by_xpath(
@@ -269,7 +281,7 @@ class crawler:
                 f.write('\n')
             f.close()
 
-    def DealTimeOut(self):
+    def DealTimeOut(self, mode):
         print("\n处理超时文件")
         deal = []
         with open("res/unable_4.txt", "r") as f:
@@ -279,13 +291,19 @@ class crawler:
                 if not item == '':
                     deal.append(eval(item))
             f.close()
-        self.GetHolderInfo(deal, 1)
+
+        if mode == 0:
+            self.GetHolderInfo(deal, 1)
+        elif mode == 1:
+            self.GetInverst(deal, 1)
+        elif mode == 2:
+            pass
 
         if len(self.unable_4) and self.DealTimeOut_max_times <= 5:
             self.DealTimeOut_max_times += 1
-            self.DealTimeOut()
+            self.DealTimeOut(mode)
 
-    def DealUnKnown(self):
+    def DealUnKnown(self, mode):
         print("\n处理未知原因空缺")
         deal = []
         with open("res/unable_5.txt", "r") as f:
@@ -294,16 +312,118 @@ class crawler:
                 if not item == '':
                     deal.append(eval(item))
             f.close()
-        self.GetHolderInfo(deal, 1)
+
+        if mode == 0:
+            self.GetHolderInfo(deal, 1)
+        elif mode == 1:
+            self.GetInverst(deal, 1)
+        elif mode == 2:
+            pass
 
         if len(self.unable_5) and self.DealUnKnown_max_times <= 5:
             self.DealUnKnown_max_times += 1
-            self.DealUnKnown()
+            self.DealUnKnown(mode)
+
+    def GetInverst(self, hrefs, sign):
+        self.unable_4.clear()
+        self.unable_5.clear()
+        if sign == 0:
+            if os.path.isfile("res/unable_2.txt"):
+                os.remove("res/unable_2.txt")
+
+        for href in tqdm(hrefs, desc='获取信息', file=sys.stdout):
+            self.browser.get(href['url'])
+            InverstInfo = pd.DataFrame()
+
+            try:
+                Inverst_title = self.browser.find_element_by_xpath(
+                    '//div[@class="index_tag-nav-root__DyEBq"]/a[contains(text(),"对外投资")]')
+                if Inverst_title.text[:4] != '对外投资':  # 可能会匹配到'历史对外投资'
+                    print("无对外投资信息:", href['company_name'])
+                    self.unable_2.append(href['company_name'])
+                    continue
+                total_len = int(Inverst_title.find_element_by_xpath("./span").text)
+
+            except:
+                print("无对外投资信息:", href['company_name'])
+                self.unable_2.append(href['company_name'])
+                continue
+
+            Inversts = []
+            Ratio = []
+
+            page = int(total_len / 10) + 1
+            current_page = 0
+
+            try:
+                while page != current_page:
+                    if current_page == 1:
+                        temp = self.browser.find_element_by_id("inverst-table")
+                        footer = temp.find_element_by_xpath(
+                            f"./div/div[@class='table-footer']/div/div/div/div[{page + 1}]/i")
+                        self.browser.execute_script("arguments[0].click();", footer)
+                    elif current_page > 1:
+                        temp = self.browser.find_element_by_id("inverst-table")
+                        footer = temp.find_element_by_xpath(
+                            f"./div/div[@class='table-footer']/div/div/div/div[{page + 2}]/i")
+                        self.browser.execute_script("arguments[0].click();", footer)
+                    sleep(1)
+                    Inverst = self.browser.find_element_by_id("inverst-table")
+                    Inverst = Inverst.find_elements_by_xpath("./div/table/tbody/tr")
+                    for item in Inverst:
+                        WebDriverWait(self.browser, 10)
+                        data = item.find_elements_by_xpath("./td")
+                        WebDriverWait(self.browser, 20).until(
+                            lambda diver: data[1].find_element_by_xpath("./div/div[2]/div/div/a"))
+                        status = data[6].text
+                        if '存续' in status or '在营' in status or '开业' in status or '在册' in status:
+                            Inversts.append(data[1].find_element_by_xpath("./div/div[2]/div/div/a").text)
+                            Ratio.append(data[5].text)
+                        else:
+                            total_len -= 1
+                    current_page += 1
+            except:
+                print("超时未获取：", href['company_name'])
+                self.unable_4.append(href)
+                continue
+
+            if len(Inversts) == 0 or len(Ratio) == 0 or Inversts[0] == '' or Ratio[0] == '':
+                print("未知原因缺失：", href['company_name'])
+                self.unable_5.append(href)
+                continue
+            else:
+                InverstInfo['企业名称'] = [href['company_name']] * total_len
+                InverstInfo['被投资企业名称'] = Inversts
+                InverstInfo['投资比例'] = Ratio
+                if sign == 0:
+                    InverstInfo.to_csv("res/inverst_result.csv", mode='w', header=True, index=False)
+                else:
+                    InverstInfo.to_csv("res/inverst_result.csv", mode='a', header=False, index=False)
+                sign = 1
+
+        with open("res/unable_2.txt", "w") as f:
+            for item in self.unable_2:
+                f.write(item)
+                f.write('\n')
+            f.close()
+
+        with open("res/unable_4.txt", "w") as f:
+            for item in self.unable_4:
+                f.write(str(item))
+                f.write('\n')
+            f.close()
+
+        with open("res/unable_5.txt", "w") as f:
+            for item in self.unable_5:
+                f.write(str(item))
+                f.write('\n')
+            f.close()
 
 
 if __name__ == '__main__':
     c = crawler()
     c.GetURL()
-    # c.GetHolderInfo(c.hrefs, 0)
-    # c.DealTimeOut()
-    # c.DealUnKnown()
+    c.GetHolderInfo(c.hrefs, 0)
+    # c.GetInverst(c.hrefs, 0)
+    # c.DealTimeOut(1)
+    # c.DealUnKnown(1)
