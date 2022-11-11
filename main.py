@@ -49,6 +49,7 @@ class crawler:
         urls = []
         status = []  # 0:正常，1:经营状况异常，
         for key_word in tqdm(self.key_words, desc="获取网址", file=sys.stdout):
+            raw_word = key_word
             names.append(key_word)
             url = 'https://www.tianyancha.com/search?key={}'.format(quote(key_word))
             self.browser.get(url)
@@ -111,14 +112,14 @@ class crawler:
                     try:
                         LogOut = company.find_element_by_xpath("../../div[2]").get_attribute('class')
                         if 'normal' not in LogOut:  # 判断经营状况是否正常
-                            print("经营状况异常:", key_word)
+                            print("经营状况异常:", raw_word)
                             self.exist.append(0)
-                            self.unable_3.append(key_word)
+                            self.unable_3.append(raw_word)
                             status.append(1)
                             urls.append('-')
                             continue
                         href = company.get_attribute('href')
-                        self.hrefs.append({"company_name": key_word, "url": href})
+                        self.hrefs.append({"company_name": raw_word, "url": href})
                         self.exist.append(1)
                         status.append(0)
                         urls.append(href)
@@ -135,14 +136,14 @@ class crawler:
                         try:
                             LogOut = company.find_element_by_xpath("../../div[2]").get_attribute('class')
                             if 'normal' not in LogOut:  # 判断经营状况是否正常
-                                print("经营状况异常:", key_word)
+                                print("经营状况异常:", raw_word)
                                 self.exist.append(0)
-                                self.unable_3.append(key_word)
+                                self.unable_3.append(raw_word)
                                 status.append(1)
                                 urls.append('-')
                                 continue
                             href = company.get_attribute('href')
-                            self.hrefs.append({"company_name": key_word, "url": href})
+                            self.hrefs.append({"company_name": raw_word, "url": href})
                             self.exist.append(1)
                             status.append(1)
                             urls.append(href)
@@ -153,7 +154,7 @@ class crawler:
                     pass
             status.append(2)
             urls.append('-')
-            print('未找到:', key_word)
+            print('未找到:', raw_word)
             cnt += 1
             if cnt % 100 == 0:
                 save_info['企业名称'] = names
