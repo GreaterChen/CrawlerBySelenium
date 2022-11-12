@@ -2,7 +2,7 @@ from Crawler import *
 
 # 欲爬取企业索引范围
 begin = 0
-end = 20
+end = 10000
 
 
 class GetURL(Crawler):
