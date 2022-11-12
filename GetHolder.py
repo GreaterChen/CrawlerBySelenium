@@ -1,7 +1,7 @@
 from Crawler import *
 
-begin = 10
-end = 20
+begin = 0
+end = 10000
 
 
 class GetHolderInfo(Crawler):
@@ -83,7 +83,6 @@ class GetHolderInfo(Crawler):
                 print("超时未获取:", href['company_name'], href['url'])
                 self.unable_4.append(href)
                 continue
-
             if len(gudongs) == 0 or len(chigubilis) == 0 or gudongs[0] == '' or chigubilis[0] == '':
                 print("未知原因缺失:", href['company_name'], href['url'])
                 self.unable_5.append(href)
@@ -170,7 +169,7 @@ class GetHolderInfo(Crawler):
 
 if __name__ == '__main__':
     g = GetHolderInfo(begin, end)
-    g.run(g.hrefs, 0, 0)
+    g.run(g.hrefs, 0, 0.1)
     g.DealTimeOut()
     g.DealUnKnown()
     pass

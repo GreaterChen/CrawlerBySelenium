@@ -11,8 +11,8 @@ open("res/url/unable_3.txt", "w").truncate()
 open("res/Holder/result.csv", "w").truncate()
 temp = pd.DataFrame()
 temp['企业名称'] = []
-temp['被投资企业名称'] = []
-temp['投资比例'] = []
+temp['股东(发起人)'] = []
+temp['持股比例'] = []
 temp.to_csv("res/Holder/result.csv")
 
 open("res/Holder/unable_2.txt", "w").truncate()
