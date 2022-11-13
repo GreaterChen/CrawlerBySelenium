@@ -7,7 +7,7 @@ end = 10000
 class GetHolderInfo(Crawler):
     def __init__(self, begin, end):
         super(GetHolderInfo, self).__init__()
-        url_info = pd.read_csv('res/url/url_info_total.csv')
+        url_info = pd.read_csv('res/url/url_info_total.csv',encoding="ANSI")
         name = url_info[url_info['状态'] == 0]['企业名称'].to_list()
         url = url_info[url_info['状态'] == 0]['网址'].to_list()
         max_len = len(name)

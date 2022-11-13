@@ -3,14 +3,19 @@ import pandas as pd
 from Crawler import *
 
 # 欲爬取企业索引范围
-begin = 10000
-end = 20000
+begin = 70000
+end = 90000
 
 
 class GetURL(Crawler):
     def __init__(self, begin, end):
         super(GetURL, self).__init__()
         self.all_companys = pd.read_excel('dataset/data.xlsx')
+
+        max_end = len(self.all_companys)
+        if end > max_end:
+            end = max_end
+
         self.key_words = self.all_companys['企业名称'].to_list()[begin:end]  # 在这更改处理企业范围
         self.exist = []  # 能否匹配到网址
         self.hrefs = []  # 匹配到的企业名称和网址(字典格式存储)
@@ -18,6 +23,7 @@ class GetURL(Crawler):
         self.unable_3 = []  # 经营状况异常
 
         self.LogIn()
+
 
     def run(self):
         cnt = 0
@@ -36,8 +42,14 @@ class GetURL(Crawler):
             raw_word = key_word
             names.append(key_word)
             url = 'https://www.tianyancha.com/search?key={}'.format(quote(key_word))
-            self.browser.get(url)
             self.browser.implicitly_wait(1)
+            try:
+                self.browser.get(url)
+            except:
+                self.unable_6.append(key_word)
+                urls.append('-')
+                status.append(3)
+                continue
             try:
                 company = self.browser.find_element_by_xpath("//*[@class='index_name__qEdWi']/a")  # 获取搜索结果的第一家企业
                 if company.text == key_word or company.text == key_word[:-2] + '责任公司' or key_word in company.text \

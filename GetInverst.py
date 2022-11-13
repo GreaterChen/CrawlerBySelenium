@@ -1,13 +1,13 @@
 from Crawler import *
 
 begin = 0
-end = 10
+end = 1300
 
 
 class GetInverst(Crawler):
     def __init__(self, begin, end):
         super(GetInverst, self).__init__()
-        url_info = pd.read_csv('res/url/url_info_total.csv')
+        url_info = pd.read_csv('res/url/url_info_total.csv', encoding="ANSI")[1860:1960]
         name = url_info[url_info['状态'] == 0]['企业名称'].to_list()
         url = url_info[url_info['状态'] == 0]['网址'].to_list()
         max_len = len(name)
@@ -82,16 +82,11 @@ class GetInverst(Crawler):
                 self.unable_4.append(href)
                 continue
 
-            if len(Inversts) == 0 or len(Ratio) == 0 or Inversts[0] == '' or Ratio[0] == '':
-                print("未知原因缺失：", href['company_name'], href['url'])
-                self.unable_5.append(href)
-                continue
-            else:
-                InverstInfo['企业名称'] = [href['company_name']] * total_len
-                InverstInfo['被投资企业名称'] = Inversts
-                InverstInfo['投资比例'] = Ratio
-                InverstInfo.to_csv("res/Inverst/result.csv", mode='a', header=False, index=True)
-                sign = 99
+            InverstInfo['企业名称'] = [href['company_name']] * total_len
+            InverstInfo['被投资企业名称'] = Inversts
+            InverstInfo['投资比例'] = Ratio
+            InverstInfo.to_csv("res/Inverst/result.csv", mode='a', header=False, index=True)
+            sign = 99
 
         with open("res/Inverst/unable_2.txt", "a") as f:
             for item in self.unable_2:
