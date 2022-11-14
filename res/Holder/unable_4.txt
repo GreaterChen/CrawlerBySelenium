@@ -1,0 +1,2 @@
+{'company_name': '四川长江液压件有限公司', 'url': 'https://www.tianyancha.com/company/187064686'}
+{'company_name': '长春市汽车冲压件有限公司', 'url': 'https://www.tianyancha.com/company/270553316'}
