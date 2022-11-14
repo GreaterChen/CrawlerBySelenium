@@ -16,6 +16,8 @@ temp['持股比例'] = []
 temp.to_csv("res/Holder/result.csv")
 
 open("res/Holder/unable_2.txt", "w").truncate()
+open("res/Holder/unable_4.txt","w").truncate()
+open("res/Holder/unable_4_remain.txt","w").truncate()
 
 # Inverst
 open("res/Inverst/result.csv","w").truncate()
@@ -24,6 +26,8 @@ temp['企业名称'] = []
 temp['被投资企业名称'] = []
 temp['投资比例'] = []
 temp.to_csv("res/Inverst/result.csv")
+open("res/Inverst/unable_4.txt","w").truncate()
+open("res/Inverst/unable_4_remain.txt","w").truncate()
 
 open("res/Inverst/unable_2.txt","w").truncate()
 

@@ -1,15 +1,17 @@
+import pandas as pd
+
 from Crawler import *
 
-begin = 0
-end = 1300
+begin = 60000
+end = 70000
 
 
 class GetInverst(Crawler):
     def __init__(self, begin, end):
         super(GetInverst, self).__init__()
-        url_info = pd.read_csv('res/url/url_info_total.csv', encoding="ANSI")[1860:1960]
-        name = url_info[url_info['状态'] == 0]['企业名称'].to_list()
-        url = url_info[url_info['状态'] == 0]['网址'].to_list()
+        url_info = pd.read_csv('res/url/url_info_total.csv')
+        name = url_info[url_info['网址'] != '-']['企业名称'].to_list()
+        url = url_info[url_info['网址'] != '-']['网址'].to_list()
         max_len = len(name)
         print(f"共有{max_len}条数据")
         if begin >= max_len:
@@ -47,7 +49,7 @@ class GetInverst(Crawler):
             Inversts = []
             Ratio = []
 
-            page = int(total_len / 11) + 1
+            page = int((total_len - 1) / 10) + 1
             current_page = 0
 
             try:
@@ -63,13 +65,19 @@ class GetInverst(Crawler):
                             f"./div/div[@class='table-footer']/div/div/div/div[{page + 2}]/i")
                         self.browser.execute_script("arguments[0].click();", footer)
                     sleep(sleep_time)
+                    WebDriverWait(self.browser, 2).until(
+                        lambda diver: self.browser.find_element_by_id("inverst-table"))
                     Inverst = self.browser.find_element_by_id("inverst-table")
                     Inverst = Inverst.find_elements_by_xpath("./div/table/tbody/tr")
                     for item in Inverst:
                         WebDriverWait(self.browser, 10)
                         data = item.find_elements_by_xpath("./td")
-                        WebDriverWait(self.browser, 20).until(
-                            lambda diver: data[1].find_element_by_xpath("./div/div[2]/div/div/a"))
+                        try:
+                            WebDriverWait(self.browser, 2).until(
+                                lambda diver: data[1].find_element_by_xpath("./div/div[2]/div/div/a"))
+                        except:
+                            total_len -= 1
+                            continue
                         status = data[6].text
                         if '存续' in status or '在营' in status or '开业' in status or '在册' in status:
                             Inversts.append(data[1].find_element_by_xpath("./div/div[2]/div/div/a").text)
@@ -82,7 +90,8 @@ class GetInverst(Crawler):
                 self.unable_4.append(href)
                 continue
 
-            InverstInfo['企业名称'] = [href['company_name']] * total_len
+            InverstInfo = pd.DataFrame()
+            InverstInfo['企业名称'] = [href['company_name']] * len(Inversts)
             InverstInfo['被投资企业名称'] = Inversts
             InverstInfo['投资比例'] = Ratio
             InverstInfo.to_csv("res/Inverst/result.csv", mode='a', header=False, index=True)
@@ -124,7 +133,7 @@ class GetInverst(Crawler):
                     deal.append(eval(item))
             f.close()
 
-        self.run(deal, 1, self.DealTimeOut_times)
+        self.run(deal, 1, self.DealTimeOut_times*0.2 + 0.4)
 
         if len(self.unable_4):
             if self.DealTimeOut_times <= 5:
@@ -163,6 +172,6 @@ class GetInverst(Crawler):
 
 if __name__ == '__main__':
     g = GetInverst(begin, end)
-    g.run(g.hrefs, 0, 0)
+    g.run(g.hrefs, 0, 0.2)
     g.DealTimeOut()
     g.DealUnKnown()

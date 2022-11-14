@@ -1,13 +1,15 @@
+import pandas as pd
+
 from Crawler import *
 
 begin = 0
-end = 10000
+end = 1000
 
 
 class GetHolderInfo(Crawler):
     def __init__(self, begin, end):
         super(GetHolderInfo, self).__init__()
-        url_info = pd.read_csv('res/url/url_info_total.csv',encoding="ANSI")
+        url_info = pd.read_csv('res/url/url_info_total.csv')
         name = url_info[url_info['状态'] == 0]['企业名称'].to_list()
         url = url_info[url_info['状态'] == 0]['网址'].to_list()
         max_len = len(name)
@@ -32,9 +34,6 @@ class GetHolderInfo(Crawler):
             self.browser.get(href['url'])
             self.browser.implicitly_wait(1)
 
-            # 股东信息部分
-            GuDongInfo = pd.DataFrame()
-
             # 在上方索引栏定位股东信息
             try:
                 gudong_title = self.browser.find_element_by_xpath(
@@ -54,8 +53,7 @@ class GetHolderInfo(Crawler):
             gudongs = []  # 股东
             chigubilis = []  # 持股比例
 
-            # GuDong_size = len(GuDong)
-            page = int(total_len / 21) + 1
+            page = int((total_len - 1) / 20) + 1
             current_page = 0
             try:
                 while page != current_page:
@@ -68,9 +66,10 @@ class GetHolderInfo(Crawler):
                             f"//div[@data-dim='holder']/div[2]/div/div[@class='table-footer']/div/div/div/div[{page + 2}]")
                         self.browser.execute_script("arguments[0].click();", temp)
                     sleep(sleep_time)
+                    WebDriverWait(self.browser, 20).until(
+                        lambda diver: self.browser.find_element_by_xpath("//div[@data-dim='holder']/div[2]/div/table/tbody/tr"))
                     self.GuDong = self.browser.find_elements_by_xpath(
                         "//div[@data-dim='holder']/div[2]/div/table/tbody/tr")
-                    WebDriverWait(self.browser, 10)
                     for item in self.GuDong:
                         WebDriverWait(self.browser, 10)
                         data = item.find_elements_by_xpath("./td")
@@ -83,18 +82,21 @@ class GetHolderInfo(Crawler):
                 print("超时未获取:", href['company_name'], href['url'])
                 self.unable_4.append(href)
                 continue
+
+
             if len(gudongs) == 0 or len(chigubilis) == 0 or gudongs[0] == '' or chigubilis[0] == '':
                 print("未知原因缺失:", href['company_name'], href['url'])
                 self.unable_5.append(href)
                 continue
             else:
+                GuDongInfo = pd.DataFrame()
                 GuDongInfo['企业名称'] = [href['company_name']] * total_len
                 GuDongInfo['股东(发起人)'] = gudongs
                 GuDongInfo['持股比例'] = chigubilis
                 GuDongInfo.to_csv("res/Holder/result.csv", mode='a', header=False, index=True)
                 sign = 99
 
-        with open("res/Holder/unable_2.txt", "a") as f:
+        with open("res/Holder/unable_2.txt", "w") as f:
             for item in self.unable_2:
                 f.write(item)
                 f.write('\n')
@@ -120,7 +122,8 @@ class GetHolderInfo(Crawler):
                 f.close()
 
     def DealTimeOut(self):
-        print("\n处理超时文件")
+        self.DealTimeOut_times += 1
+        print("\n处理超时文件", self.DealTimeOut_times)
         deal = []
         with open("res/Holder/unable_4.txt", "r") as f:
             data = f.read().strip().split('\n')
@@ -130,11 +133,10 @@ class GetHolderInfo(Crawler):
                     deal.append(eval(item))
             f.close()
 
-        self.run(deal, 1, self.DealTimeOut_times)
+        self.run(deal, 1, self.DealTimeOut_times * 0.2 + 0.2)
 
         if len(self.unable_4):
-            if self.DealTimeOut_times <= 5:
-                self.DealTimeOut_times += 1
+            if self.DealTimeOut_times <= 3:
                 self.DealTimeOut()
             else:
                 with open("res/Holder/unable_4_remain.txt", "a") as f:
@@ -144,6 +146,7 @@ class GetHolderInfo(Crawler):
                     f.close()
 
     def DealUnKnown(self):
+        self.DealUnKnown_times += 1
         print("\n处理未知原因空缺")
         deal = []
         with open("res/Holder/unable_5.txt", "r") as f:
@@ -153,11 +156,10 @@ class GetHolderInfo(Crawler):
                     deal.append(eval(item))
             f.close()
 
-        self.run(deal, 2, self.DealUnKnown_times + 1)
+        self.run(deal, 2, self.DealUnKnown_times * 0.2 + 0.2)
 
         if len(self.unable_5):
             if self.DealUnKnown_times <= 5:
-                self.DealUnKnown_times += 1
                 self.DealUnKnown()
             else:
                 with open("res/Holder/unable_5_remain.txt", "a") as f:
@@ -169,7 +171,7 @@ class GetHolderInfo(Crawler):
 
 if __name__ == '__main__':
     g = GetHolderInfo(begin, end)
-    g.run(g.hrefs, 0, 0.1)
+    g.run(g.hrefs, 0, 0.2)
     g.DealTimeOut()
     g.DealUnKnown()
     pass
